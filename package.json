@@ -1,0 +1,15 @@
+{
+  "name": "workspace-root",
+  "private": true,
+  "workspaces": [
+    "agency-connect-lovable/frontend",
+    "rise-marketplace-nexus-main/frontend",
+    "shared"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm --prefix agency-connect-lovable/frontend run dev -- --port 5173\" \"npm --prefix rise-marketplace-nexus-main/frontend run dev -- --port 5174\""
+  }
+}
