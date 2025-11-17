@@ -221,11 +221,16 @@ export default function ProductDetail() {
                 <div className="mt-6">
                   <h4 className="font-semibold mb-3">Tags</h4>
                   <div className="flex flex-wrap gap-2">
-                    {product.tags.map((tag) => (
+                    {product.tags.slice(0, 3).map((tag) => (
                       <Badge key={tag} variant="outline">
                         {tag}
                       </Badge>
                     ))}
+                    {product.tags.length > 3 && (
+                      <Badge variant="outline" className="bg-muted">
+                        +{product.tags.length - 3}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               )}

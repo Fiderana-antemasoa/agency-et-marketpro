@@ -53,6 +53,19 @@ export const ProductCard = ({
     return colors[category as keyof typeof colors] || colors.other;
   };
 
+  const formatDeliveryDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <Card 
       className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
@@ -223,9 +236,9 @@ export const ProductCard = ({
 
         {/* Delivery Time */}
         {product.delivery_time && (
-          <div className="text-right">
-            <span className="text-xs text-muted-foreground">Livraison</span>
-            <div className="text-sm font-medium">{product.delivery_time}</div>
+          <div className="text-right max-w-[120px]">
+            <span className="text-xs text-muted-foreground block">Livraison</span>
+            <div className="text-sm font-medium truncate">{formatDeliveryDate(product.delivery_time)}</div>
           </div>
         )}
       </CardFooter>

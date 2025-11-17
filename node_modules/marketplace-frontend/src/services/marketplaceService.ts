@@ -89,7 +89,7 @@ const MOCK_PRODUCTS: MarketplaceProduct[] = [
     is_trending: true,
     country: "CA",
     city: "Montreal",
-    condition: "new",
+    condition: "good",
     published_at: "2024-01-10T14:30:00Z",
     created_at: "2024-01-10T14:30:00Z",
     updated_at: "2024-01-10T14:30:00Z",
@@ -138,7 +138,7 @@ const MOCK_PRODUCTS: MarketplaceProduct[] = [
     is_trending: false,
     country: "BE",
     city: "Brussels",
-    condition: "new",
+    condition: "poor",
     published_at: "2024-01-12T09:15:00Z",
     created_at: "2024-01-12T09:15:00Z",
     updated_at: "2024-01-12T09:15:00Z",
@@ -161,20 +161,25 @@ const MOCK_PRODUCTS: MarketplaceProduct[] = [
 ];
 
 const MOCK_CATEGORIES: CategoryOption[] = [
-  { value: 'digital_products', label: 'Produits Numériques', icon: '💻', count: 45 },
-  { value: 'services', label: 'Services', icon: '🛠️', count: 32 },
-  { value: 'courses', label: 'Formations', icon: '🎓', count: 28 },
-  { value: 'design', label: 'Design', icon: '🎨', count: 67 },
-  { value: 'software', label: 'Logiciels', icon: '⚡', count: 23 },
-  { value: 'consulting', label: 'Consulting', icon: '💡', count: 41 },
-  { value: 'marketing', label: 'Marketing', icon: '📈', count: 38 },
+  // Catégories principales d'agency-connect (synchronisées)
+  { value: 'web', label: 'Développement Web', icon: '🌐', count: 45 },
+  { value: 'seo', label: 'SEO & Référencement', icon: '🔍', count: 32 },
+  { value: 'marketing', label: 'Marketing Digital', icon: '📈', count: 38 },
+  { value: 'design', label: 'Design & Graphisme', icon: '🎨', count: 67 },
+  { value: 'consulting', label: 'Consulting & Conseil', icon: '💡', count: 41 },
+  
+  // Catégories supplémentaires marketplace
+  { value: 'courses', label: 'Formations & Cours', icon: '🎓', count: 28 },
+  { value: 'software', label: 'Logiciels & Outils', icon: '⚡', count: 23 },
+  { value: 'digital_products', label: 'Produits Numériques', icon: '💻', count: 34 },
+  { value: 'services', label: 'Services Divers', icon: '🛠️', count: 29 },
   { value: 'electronics', label: 'Électronique', icon: '📱', count: 89 },
-  { value: 'fashion', label: 'Mode', icon: '👗', count: 54 },
-  { value: 'home', label: 'Maison', icon: '🏠', count: 76 },
-  { value: 'automotive', label: 'Automobile', icon: '🚗', count: 34 },
-  { value: 'sports', label: 'Sports', icon: '⚽', count: 29 },
-  { value: 'health', label: 'Santé', icon: '💊', count: 21 },
-  { value: 'other', label: 'Autres', icon: '📦', count: 15 }
+  { value: 'fashion', label: 'Mode & Style', icon: '👗', count: 54 },
+  { value: 'home', label: 'Maison & Jardin', icon: '🏠', count: 76 },
+  { value: 'automotive', label: 'Automobile', icon: '🚗', count: 21 },
+  { value: 'sports', label: 'Sports & Loisirs', icon: '⚽', count: 18 },
+  { value: 'health', label: 'Santé & Bien-être', icon: '💊', count: 15 },
+  { value: 'other', label: 'Autres Catégories', icon: '📦', count: 12 }
 ];
 
 // ========== FONCTIONS API (Structure Laravel-ready) ==========
@@ -200,19 +205,98 @@ export const fetchMarketplaceProducts = async (
       ? offers.map(mapOfferToProduct)
       : [];
 
-    // TODO: apply filters client-side if needed (category, brand, etc.)
+    // Apply all filters client-side
     let filteredProducts = [...allProducts];
+    
+    // Search filter
     if (filters.search) {
       const q = String(filters.search).toLowerCase();
       filteredProducts = filteredProducts.filter(p =>
-        p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+        p.title.toLowerCase().includes(q) || 
+        p.description.toLowerCase().includes(q) ||
+        p.tags.some(tag => tag.toLowerCase().includes(q))
       );
     }
+    
+    // Category filter
     if (filters.category) {
-      filteredProducts = filteredProducts.filter(p => p.category === filters.category);
+      if (Array.isArray(filters.category)) {
+        filteredProducts = filteredProducts.filter(p => 
+          filters.category!.includes(p.category)
+        );
+      } else {
+        filteredProducts = filteredProducts.filter(p => p.category === filters.category);
+      }
     }
+    
+    // Brand filter
     if (filters.brand) {
-      filteredProducts = filteredProducts.filter(p => (p.brand || '').toLowerCase() === String(filters.brand).toLowerCase());
+      filteredProducts = filteredProducts.filter(p => 
+        (p.brand || '').toLowerCase() === String(filters.brand).toLowerCase()
+      );
+    }
+    
+    // Price filters
+    if (filters.price_min !== undefined) {
+      filteredProducts = filteredProducts.filter(p => p.price >= filters.price_min!);
+    }
+    if (filters.price_max !== undefined) {
+      filteredProducts = filteredProducts.filter(p => p.price <= filters.price_max!);
+    }
+    
+    // Condition filter
+    if (filters.condition) {
+      filteredProducts = filteredProducts.filter(p => p.condition === filters.condition);
+    }
+    
+    // Tags filter
+    if (filters.tags && filters.tags.length > 0) {
+      filteredProducts = filteredProducts.filter(p =>
+        filters.tags!.some(tag => p.tags.includes(tag))
+      );
+    }
+    
+    // Featured filter
+    if (filters.is_featured) {
+      filteredProducts = filteredProducts.filter(p => p.is_featured);
+    }
+    
+    // Trending filter
+    if (filters.is_trending) {
+      filteredProducts = filteredProducts.filter(p => p.is_trending);
+    }
+    
+    // City filter
+    if (filters.city) {
+      filteredProducts = filteredProducts.filter(p => 
+        (p.city || '').toLowerCase().includes(filters.city!.toLowerCase())
+      );
+    }
+    
+    // Sorting
+    if (filters.sort_by) {
+      switch (filters.sort_by) {
+        case 'price':
+          filteredProducts.sort((a, b) => a.price - b.price);
+          break;
+        case 'rating':
+          filteredProducts.sort((a, b) => (b.stats?.average_rating || 0) - (a.stats?.average_rating || 0));
+          break;
+        case 'sales':
+          filteredProducts.sort((a, b) => (b.stats?.total_sales || 0) - (a.stats?.total_sales || 0));
+          break;
+        case 'trending':
+          filteredProducts.sort((a, b) => {
+            if (a.is_trending && !b.is_trending) return -1;
+            if (!a.is_trending && b.is_trending) return 1;
+            return 0;
+          });
+          break;
+        case 'created_at':
+        default:
+          filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+      }
     }
 
     const total = filteredProducts.length;
@@ -232,7 +316,101 @@ export const fetchMarketplaceProducts = async (
   } catch (err) {
     console.warn('[Marketplace] Agency backend unreachable, falling back to MOCK_PRODUCTS:', err);
     await new Promise(resolve => setTimeout(resolve, 300));
-    const filteredProducts = [...MOCK_PRODUCTS];
+    
+    // Apply same filters to MOCK_PRODUCTS
+    let filteredProducts = [...MOCK_PRODUCTS];
+    
+    // Search filter
+    if (filters.search) {
+      const q = String(filters.search).toLowerCase();
+      filteredProducts = filteredProducts.filter(p =>
+        p.title.toLowerCase().includes(q) || 
+        p.description.toLowerCase().includes(q) ||
+        p.tags.some(tag => tag.toLowerCase().includes(q))
+      );
+    }
+    
+    // Category filter
+    if (filters.category) {
+      if (Array.isArray(filters.category)) {
+        filteredProducts = filteredProducts.filter(p => 
+          filters.category!.includes(p.category)
+        );
+      } else {
+        filteredProducts = filteredProducts.filter(p => p.category === filters.category);
+      }
+    }
+    
+    // Brand filter
+    if (filters.brand) {
+      filteredProducts = filteredProducts.filter(p => 
+        (p.brand || '').toLowerCase() === String(filters.brand).toLowerCase()
+      );
+    }
+    
+    // Price filters
+    if (filters.price_min !== undefined) {
+      filteredProducts = filteredProducts.filter(p => p.price >= filters.price_min!);
+    }
+    if (filters.price_max !== undefined) {
+      filteredProducts = filteredProducts.filter(p => p.price <= filters.price_max!);
+    }
+    
+    // Condition filter
+    if (filters.condition) {
+      filteredProducts = filteredProducts.filter(p => p.condition === filters.condition);
+    }
+    
+    // Tags filter
+    if (filters.tags && filters.tags.length > 0) {
+      filteredProducts = filteredProducts.filter(p =>
+        filters.tags!.some(tag => p.tags.includes(tag))
+      );
+    }
+    
+    // Featured filter
+    if (filters.is_featured) {
+      filteredProducts = filteredProducts.filter(p => p.is_featured);
+    }
+    
+    // Trending filter
+    if (filters.is_trending) {
+      filteredProducts = filteredProducts.filter(p => p.is_trending);
+    }
+    
+    // City filter
+    if (filters.city) {
+      filteredProducts = filteredProducts.filter(p => 
+        (p.city || '').toLowerCase().includes(filters.city!.toLowerCase())
+      );
+    }
+    
+    // Sorting
+    if (filters.sort_by) {
+      switch (filters.sort_by) {
+        case 'price':
+          filteredProducts.sort((a, b) => a.price - b.price);
+          break;
+        case 'rating':
+          filteredProducts.sort((a, b) => (b.stats?.average_rating || 0) - (a.stats?.average_rating || 0));
+          break;
+        case 'sales':
+          filteredProducts.sort((a, b) => (b.stats?.total_sales || 0) - (a.stats?.total_sales || 0));
+          break;
+        case 'trending':
+          filteredProducts.sort((a, b) => {
+            if (a.is_trending && !b.is_trending) return -1;
+            if (!a.is_trending && b.is_trending) return 1;
+            return 0;
+          });
+          break;
+        case 'created_at':
+        default:
+          filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+      }
+    }
+    
     const total = filteredProducts.length;
     const startIndex = (page - 1) * perPage;
     const endIndex = startIndex + perPage;
@@ -244,7 +422,7 @@ export const fetchMarketplaceProducts = async (
       last_page: Math.ceil(total / perPage),
       per_page: perPage,
       total: total,
-      from: startIndex + 1,
+      from: total === 0 ? 0 : startIndex + 1,
       to: Math.min(endIndex, total)
     };
   }

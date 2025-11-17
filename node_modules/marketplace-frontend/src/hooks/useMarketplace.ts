@@ -215,10 +215,19 @@ export const useMarketplaceFilters = () => {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.search) count++;
-    if (filters.category) count++;
+    if (filters.category) {
+      count += Array.isArray(filters.category) ? filters.category.length : 1;
+    }
+    if (filters.subcategory) count++;
     if (filters.price_min !== undefined || filters.price_max !== undefined) count++;
+    if (filters.condition) count++;
+    if (filters.brand) count++;
     if (filters.tags && filters.tags.length > 0) count += filters.tags.length;
     if (filters.is_featured) count++;
+    if (filters.is_trending) count++;
+    if (filters.city) count++;
+    // Note: country filter is intentionally excluded as requested
+    // if (filters.country) count++;
     return count;
   }, [filters]);
 

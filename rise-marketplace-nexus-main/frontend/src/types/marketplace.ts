@@ -1,14 +1,17 @@
 // Types pour la marketplace complète - Compatible avec votre structure Laravel/MySQL
 export type ProductCategory = 
+  // Catégories principales d'agency-connect (synchronisées)
+  | 'web' | 'seo' | 'marketing' | 'design' | 'consulting'
+  // Catégories marketplace étendues
+  | 'courses' | 'software' | 'digital_products' | 'services'
   | 'electronics' | 'computers' | 'phones' | 'cameras' | 'audio'
   | 'fashion' | 'clothing' | 'shoes' | 'accessories' | 'jewelry'
   | 'home' | 'furniture' | 'decor' | 'kitchen' | 'garden'
-  | 'books' | 'education' | 'courses' | 'ebooks' | 'audiobooks'
+  | 'books' | 'education' | 'ebooks' | 'audiobooks'
   | 'health' | 'beauty' | 'fitness' | 'supplements' | 'medical'
   | 'sports' | 'outdoor' | 'cycling' | 'football' | 'basketball'
   | 'automotive' | 'parts' | 'tools' | 'motorcycles' | 'boats'
-  | 'services' | 'consulting' | 'design' | 'marketing' | 'development'
-  | 'digital_products' | 'software' | 'apps' | 'templates' | 'themes'
+  | 'apps' | 'templates' | 'themes' | 'development'
   | 'arts' | 'music' | 'photography' | 'crafts' | 'collectibles'
   | 'real_estate' | 'apartments' | 'houses' | 'commercial' | 'land'
   | 'business' | 'equipment' | 'supplies' | 'franchises' | 'investments'
@@ -88,7 +91,7 @@ export interface MarketplaceProduct {
   is_trending: boolean;
   country: Country;
   city?: string;
-  condition?: 'new' | 'like_new' | 'good' | 'fair' | 'poor';
+  condition?: 'new' | 'like_new' | 'good' | 'fair' | 'poor' | 'to_repair';
   brand?: string;
   model?: string;
   published_at?: string;
@@ -101,7 +104,7 @@ export interface MarketplaceProduct {
 
 export interface MarketplaceFilters {
   search?: string;
-  category?: ProductCategory;
+  category?: ProductCategory | ProductCategory[]; 
   subcategory?: string;
   country?: Country;
   city?: string;

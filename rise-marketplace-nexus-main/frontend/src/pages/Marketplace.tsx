@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Filter, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,14 +7,105 @@ import { ProductFilters } from '@/components/marketplace/ProductFilters';
 import { MarketplaceHeader } from '@/components/marketplace/MarketplaceHeader';
 import { useMarketplace, useMarketplaceFilters } from '@/hooks/useMarketplace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Country } from '@/types/marketplace';
+import type { Country, MarketplaceProduct } from '@/types/marketplace';
 
 export default function Marketplace() {
   const { filters, updateFilters, resetFilters, activeFiltersCount } = useMarketplaceFilters();
-  const { products, loading, pagination, changePage } = useMarketplace(filters);
-  const [searchQuery, setSearchQuery] = useState(filters.search || '');
+  const { products: allProducts, loading, pagination, changePage } = useMarketplace({});
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>();
   const [showFilters, setShowFilters] = useState(false);
+
+  // Filtrage dynamique complet (recherche + filtres)
+  const filteredProducts = useMemo(() => {
+    let products = [...allProducts];
+
+    // 1. Filtrage par recherche textuelle
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      products = products.filter(product => {
+        // Recherche dans le titre du produit
+        const titleMatch = product.title.toLowerCase().includes(query);
+        
+        // Recherche dans la description
+        const descriptionMatch = product.description.toLowerCase().includes(query);
+        
+        // Recherche dans les tags
+        const tagsMatch = product.tags.some(tag => tag.toLowerCase().includes(query));
+        
+        // Recherche dans le nom du vendeur
+        const sellerMatch = product.user?.name?.toLowerCase().includes(query) || false;
+        
+        // Recherche dans la catégorie
+        const categoryMatch = product.category.toLowerCase().includes(query);
+        
+        // Recherche dans la sous-catégorie
+        const subcategoryMatch = product.subcategory?.toLowerCase().includes(query) || false;
+        
+        // Recherche dans la marque
+        const brandMatch = product.brand?.toLowerCase().includes(query) || false;
+        
+        return titleMatch || descriptionMatch || tagsMatch || sellerMatch || categoryMatch || subcategoryMatch || brandMatch;
+      });
+    }
+
+    // 2. Filtrage par catégories
+    if (filters.category) {
+      if (Array.isArray(filters.category)) {
+        products = products.filter(product => 
+          filters.category!.includes(product.category)
+        );
+      } else {
+        products = products.filter(product => product.category === filters.category);
+      }
+    }
+
+    // 3. Filtrage par prix
+    if (filters.price_min !== undefined) {
+      products = products.filter(product => product.price >= filters.price_min!);
+    }
+    if (filters.price_max !== undefined) {
+      products = products.filter(product => product.price <= filters.price_max!);
+    }
+
+    // 4. Filtrage par condition
+    if (filters.condition) {
+      products = products.filter(product => product.condition === filters.condition);
+    }
+
+    // 5. Filtrage par marque
+    if (filters.brand) {
+      products = products.filter(product => 
+        (product.brand || '').toLowerCase() === String(filters.brand).toLowerCase()
+      );
+    }
+
+    // 6. Filtrage par tags
+    if (filters.tags && filters.tags.length > 0) {
+      products = products.filter(product =>
+        filters.tags!.some(tag => product.tags.includes(tag))
+      );
+    }
+
+    // 7. Filtrage par featured
+    if (filters.is_featured) {
+      products = products.filter(product => product.is_featured);
+    }
+
+    // 8. Filtrage par trending
+    if (filters.is_trending) {
+      products = products.filter(product => product.is_trending);
+    }
+
+    // 9. Filtrage par ville
+    if (filters.city) {
+      products = products.filter(product => 
+        (product.city || '').toLowerCase().includes(filters.city!.toLowerCase())
+      );
+    }
+
+    return products;
+  }, [allProducts, searchQuery, filters]);
 
   const handleSearch = () => {
     updateFilters({ search: searchQuery || undefined });
@@ -32,6 +123,29 @@ export default function Marketplace() {
     });
   };
 
+  const handleCategoryFilter = (category: any) => {
+    updateFilters({ category });
+  };
+
+  const handleSpecialFilter = (filter: string) => {
+    switch (filter) {
+      case 'best_sellers':
+        updateFilters({ sort_by: 'sales' });
+        break;
+      case 'newest':
+        updateFilters({ sort_by: 'created_at' });
+        break;
+      case 'featured':
+        updateFilters({ is_featured: true });
+        break;
+      case 'trending':
+        updateFilters({ is_trending: true });
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -41,6 +155,8 @@ export default function Marketplace() {
         onSearch={handleSearch}
         selectedLocation={selectedLocation}
         onLocationChange={handleLocationChange}
+        onCategoryFilter={handleCategoryFilter}
+        onSpecialFilter={handleSpecialFilter}
       />
 
       {/* Breadcrumb & Stats */}
@@ -60,7 +176,12 @@ export default function Marketplace() {
             </div>
             <div className="text-sm text-muted-foreground">
               {!loading && (
-                <span>{pagination.total} produits disponibles</span>
+                <span>
+                  {searchQuery.trim() || activeFiltersCount > 0
+                    ? `${filteredProducts.length} produit(s) trouvé(s)` 
+                    : `${allProducts.length} produits disponibles`
+                  }
+                </span>
               )}
             </div>
           </div>
@@ -128,14 +249,14 @@ export default function Marketplace() {
                   <div key={i} className="h-96 bg-marketplace-gray animate-pulse rounded-lg shadow-card" />
                 ))}
               </div>
-            ) : products.length === 0 ? (
+            ) : filteredProducts.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold mb-2">Aucun produit trouvé</h3>
                 <p className="text-muted-foreground mb-4">
                   Essayez de modifier vos filtres ou votre recherche
                 </p>
-                <Button onClick={resetFilters} variant="outline">
+                <Button onClick={() => { resetFilters(); setSearchQuery(''); }} variant="outline">
                   Réinitialiser les filtres
                 </Button>
               </div>
@@ -155,7 +276,7 @@ export default function Marketplace() {
 
                 {/* Products Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}

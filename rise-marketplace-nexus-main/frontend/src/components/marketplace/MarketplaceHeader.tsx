@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LocationSelector } from './LocationSelector';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Country } from '@/types/marketplace';
+import { useCategories } from '@/hooks/useMarketplace';
+import type { Country, ProductCategory } from '@/types/marketplace';
 
 interface MarketplaceHeaderProps {
   searchQuery: string;
@@ -13,6 +14,8 @@ interface MarketplaceHeaderProps {
   onSearch: () => void;
   selectedLocation?: string;
   onLocationChange: (location: string | undefined, country?: Country) => void;
+  onCategoryFilter?: (category: ProductCategory | undefined) => void;
+  onSpecialFilter?: (filter: string) => void;
 }
 
 export const MarketplaceHeader = ({
@@ -20,11 +23,15 @@ export const MarketplaceHeader = ({
   onSearchChange,
   onSearch,
   selectedLocation,
-  onLocationChange
+  onLocationChange,
+  onCategoryFilter,
+  onSpecialFilter
 }: MarketplaceHeaderProps) => {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { categories } = useCategories();
   const [cartCount] = useState(3); // Mock cart count
   const [favoriteCount] = useState(12); // Mock favorites count
+  const [showCategories, setShowCategories] = useState(false);
 
   // Debug: Afficher l'état d'authentification
   console.log('MarketplaceHeader - isAuthenticated:', isAuthenticated, 'user:', user, 'isLoading:', isLoading);
@@ -127,7 +134,7 @@ export const MarketplaceHeader = ({
           <div className="flex-1 max-w-2xl">
             <div className="flex">
               <Input
-                placeholder="Rechercher des produits, marques, vendeurs..."
+                placeholder="Rechercher des produits, catégories, marques, vendeurs..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && onSearch()}
@@ -151,22 +158,90 @@ export const MarketplaceHeader = ({
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center gap-6 pb-3 text-sm">
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20 p-0">
-            Toutes les catégories
-          </Button>
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20 p-0">
-            Meilleures ventes
-          </Button>
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20 p-0">
-            Nouveautés
-          </Button>
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20 p-0">
-            Offres du jour
-          </Button>
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20 p-0">
-            Livraison gratuite
-          </Button>
+        <div className="pb-3">
+          {/* Barre de navigation principale */}
+          <div className="flex items-center gap-6 text-sm mb-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary-foreground hover:bg-white/20 p-0"
+              onClick={() => setShowCategories(!showCategories)}
+            >
+              Toutes les catégories {showCategories ? '▲' : '▼'}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary-foreground hover:bg-white/20 p-0"
+              onClick={() => onSpecialFilter?.('best_sellers')}
+            >
+              Meilleures ventes
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary-foreground hover:bg-white/20 p-0"
+              onClick={() => onSpecialFilter?.('newest')}
+            >
+              Nouveautés
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary-foreground hover:bg-white/20 p-0"
+              onClick={() => onSpecialFilter?.('featured')}
+            >
+              Offres du jour
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary-foreground hover:bg-white/20 p-0"
+              onClick={() => onSpecialFilter?.('trending')}
+            >
+              Tendances
+            </Button>
+          </div>
+          
+          {/* Dropdown des catégories */}
+          {showCategories && (
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-4 mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-left h-auto p-2"
+                  onClick={() => {
+                    onCategoryFilter?.(undefined);
+                    setShowCategories(false);
+                  }}
+                >
+                  <span className="text-lg mr-2">🏠</span>
+                  <span className="text-sm">Toutes</span>
+                </Button>
+                {categories.slice(0, 11).map((category) => (
+                  <Button
+                    key={category.value}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start text-left h-auto p-2 hover:bg-marketplace-orange/10"
+                    onClick={() => {
+                      onCategoryFilter?.(category.value);
+                      setShowCategories(false);
+                    }}
+                  >
+                    <span className="text-lg mr-2">{category.icon}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{category.label}</span>
+                      {category.count && (
+                        <span className="text-xs text-muted-foreground">({category.count})</span>
+                      )}
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
