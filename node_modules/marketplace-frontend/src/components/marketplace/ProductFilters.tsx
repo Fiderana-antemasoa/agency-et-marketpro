@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Filter, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { CountryFilter } from './CountryFilter';
 import type { MarketplaceFilters, CategoryOption, Country } from '@/types/marketplace';
 import { useCategories } from '@/hooks/useMarketplace';
-import { getCachedTags, getPopularTags } from '@/services/tagsService';
+import { getCachedTags, getPopularTags, refreshTags } from '@/services/tagsService';
 
 interface ProductFiltersProps {
   filters: MarketplaceFilters;
@@ -31,8 +31,7 @@ export const ProductFilters = ({
     countries: true,
     price: true,
     condition: true,
-    tags: false,
-    featured: true
+    tags: false
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -88,35 +87,41 @@ export const ProductFilters = ({
     });
   };
 
-  const handleFeaturedChange = (checked: boolean) => {
-    onFiltersChange({
-      is_featured: checked || undefined
-    });
-  };
-
   // State pour les tags dynamiques
   const [popularTags, setPopularTags] = useState<string[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
 
-  // Charger les tags depuis agency-connect au montage du composant
-  useEffect(() => {
-    const loadTags = async () => {
-      setIsLoadingTags(true);
-      try {
-        const tags = await getPopularTags(15); // Récupérer les 15 tags les plus populaires
-        if (tags.length > 0) {
-          setPopularTags(tags);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des tags:', error);
-        // Garder les tags par défaut en cas d'erreur
-      } finally {
-        setIsLoadingTags(false);
+  // Fonction pour charger les tags
+  const loadTags = useCallback(async (forceRefresh: boolean = false) => {
+    setIsLoadingTags(true);
+    try {
+      const tags = forceRefresh 
+        ? await refreshTags(15) 
+        : await getPopularTags(15); // Récupérer les 15 tags les plus populaires
+      if (tags.length > 0) {
+        setPopularTags(tags);
       }
-    };
-
-    loadTags();
+    } catch (error) {
+      console.error('Erreur lors du chargement des tags:', error);
+      // Garder les tags par défaut en cas d'erreur
+    } finally {
+      setIsLoadingTags(false);
+    }
   }, []);
+
+  // Charger les tags au montage du composant
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
+
+  // Rafraîchissement automatique des tags toutes les 30 secondes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadTags();
+    }, 30000); // 30 secondes
+
+    return () => clearInterval(interval);
+  }, [loadTags]);
 
   const conditionOptions = [
     { value: 'new', label: '✨ Neuf', description: 'Produit jamais utilisé' },
@@ -383,12 +388,32 @@ export const ProductFilters = ({
         >
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="w-full justify-between p-0 font-semibold">
-              Tags populaires
-              {openSections.tags ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+              <div className="flex items-center gap-2">
+                Tags populaires
+                {isLoadingTags && (
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    loadTags(true); // Force le rafraîchissement
+                  }}
+                  className="h-6 w-6 p-0"
+                  disabled={isLoadingTags}
+                  title="Actualiser les tags"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isLoadingTags ? 'animate-spin' : ''}`} />
+                </Button>
+                {openSections.tags ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-2 mt-3">
@@ -413,52 +438,6 @@ export const ProductFilters = ({
           </CollapsibleContent>
         </Collapsible>
 
-        <Separator />
-
-        {/* Options spéciales */}
-        <Collapsible
-          open={openSections.featured}
-          onOpenChange={() => toggleSection('featured')}
-        >
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between p-0 font-semibold">
-              Options
-              {openSections.featured ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-3 mt-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="featured"
-                checked={filters.is_featured || false}
-                onCheckedChange={handleFeaturedChange}
-              />
-              <label
-                htmlFor="featured"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                ⭐ Produits mis en avant uniquement
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="trending"
-                checked={filters.is_trending || false}
-                onCheckedChange={(checked) => onFiltersChange({ is_trending: (checked as boolean) || undefined })}
-              />
-              <label
-                htmlFor="trending"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                🔥 Produits tendance uniquement
-              </label>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
       </CardContent>
     </Card>
   );

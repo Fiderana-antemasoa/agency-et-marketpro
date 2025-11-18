@@ -129,7 +129,18 @@ export const filterTags = (tags: string[], searchQuery: string): string[] => {
 /**
  * Récupère les tags les plus populaires (limité à un nombre donné)
  */
-export const getPopularTags = async (limit: number = 10): Promise<string[]> => {
+export const getPopularTags = async (limit: number = 10, forceRefresh: boolean = false): Promise<string[]> => {
+  if (forceRefresh) {
+    invalidateTagsCache();
+  }
+  
   const tagsWithCount = await fetchTagsWithCount();
   return tagsWithCount.slice(0, limit).map(item => item.tag);
+};
+
+/**
+ * Force le rafraîchissement des tags (ignore le cache)
+ */
+export const refreshTags = async (limit: number = 10): Promise<string[]> => {
+  return getPopularTags(limit, true);
 };

@@ -15,10 +15,42 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>();
   const [showFilters, setShowFilters] = useState(false);
+  const [showBestSellers, setShowBestSellers] = useState(false);
+  const [showNewest, setShowNewest] = useState(false);
 
   // Filtrage dynamique complet (recherche + filtres)
   const filteredProducts = useMemo(() => {
     let products = [...allProducts];
+
+    // Appliquer d'abord les filtres normaux (catégories, prix, etc.)
+    // 1. Filtrage par catégories
+    if (filters.category) {
+      if (Array.isArray(filters.category)) {
+        products = products.filter(product => 
+          filters.category!.includes(product.category)
+        );
+      } else {
+        products = products.filter(product => product.category === filters.category);
+      }
+    }
+
+    // Si mode "Meilleures ventes", afficher seulement les 3 premiers triés par ventes
+    if (showBestSellers) {
+      return products
+        .sort((a, b) => (b.stats?.total_sales || 0) - (a.stats?.total_sales || 0))
+        .slice(0, 3);
+    }
+
+    // Si mode "Nouveautés", afficher seulement les derniers produits ajoutés (10 derniers jours max)
+    if (showNewest) {
+      const now = new Date();
+      const tenDaysAgo = new Date(now.getTime() - (10 * 24 * 60 * 60 * 1000));
+      
+      return products
+        .filter(product => new Date(product.created_at) >= tenDaysAgo)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10);
+    }
 
     // 1. Filtrage par recherche textuelle
     if (searchQuery.trim()) {
@@ -47,17 +79,6 @@ export default function Marketplace() {
         
         return titleMatch || descriptionMatch || tagsMatch || sellerMatch || categoryMatch || subcategoryMatch || brandMatch;
       });
-    }
-
-    // 2. Filtrage par catégories
-    if (filters.category) {
-      if (Array.isArray(filters.category)) {
-        products = products.filter(product => 
-          filters.category!.includes(product.category)
-        );
-      } else {
-        products = products.filter(product => product.category === filters.category);
-      }
     }
 
     // 3. Filtrage par prix
@@ -105,13 +126,17 @@ export default function Marketplace() {
     }
 
     return products;
-  }, [allProducts, searchQuery, filters]);
+  }, [allProducts, searchQuery, filters, showBestSellers, showNewest]);
 
   const handleSearch = () => {
+    setShowBestSellers(false); // Désactiver le mode meilleures ventes
+    setShowNewest(false); // Désactiver le mode nouveautés
     updateFilters({ search: searchQuery || undefined });
   };
 
   const handleSort = (sortBy: string) => {
+    setShowBestSellers(false); // Désactiver le mode meilleures ventes
+    setShowNewest(false); // Désactiver le mode nouveautés
     updateFilters({ sort_by: sortBy as any });
   };
 
@@ -124,24 +149,46 @@ export default function Marketplace() {
   };
 
   const handleCategoryFilter = (category: any) => {
+    // Si on clique sur "Toutes les catégories" (category = undefined),
+    // on réinitialise la catégorie et on revient à la vue générale
+    if (category === undefined) {
+      setShowBestSellers(false);
+      setShowNewest(false);
+      updateFilters({
+        category: undefined,
+        sort_by: undefined,
+        is_featured: undefined,
+        is_trending: undefined,
+      } as any);
+      return;
+    }
+
+    // Sinon, on filtre simplement par la catégorie choisie
     updateFilters({ category });
   };
 
   const handleSpecialFilter = (filter: string) => {
     switch (filter) {
       case 'best_sellers':
-        updateFilters({ sort_by: 'sales' });
+        setShowBestSellers(true);
+        setShowNewest(false);
         break;
       case 'newest':
+        setShowBestSellers(false);
+        setShowNewest(true);
         updateFilters({ sort_by: 'created_at' });
         break;
       case 'featured':
+        setShowBestSellers(false);
+        setShowNewest(false);
         updateFilters({ is_featured: true });
         break;
       case 'trending':
+        setShowBestSellers(false);
         updateFilters({ is_trending: true });
         break;
       default:
+        setShowBestSellers(false);
         break;
     }
   };
@@ -189,7 +236,7 @@ export default function Marketplace() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Filters Toggle & Sort */}
+        {/* Filters Toggle */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button
@@ -216,18 +263,6 @@ export default function Marketplace() {
               )}
             </div>
           </div>
-
-          <Select onValueChange={handleSort} defaultValue="created_at">
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Trier par..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created_at">Plus récents</SelectItem>
-              <SelectItem value="price">Prix croissant</SelectItem>
-              <SelectItem value="rating">Mieux notés</SelectItem>
-              <SelectItem value="sales">Plus vendus</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="flex gap-6">
@@ -256,7 +291,7 @@ export default function Marketplace() {
                 <p className="text-muted-foreground mb-4">
                   Essayez de modifier vos filtres ou votre recherche
                 </p>
-                <Button onClick={() => { resetFilters(); setSearchQuery(''); }} variant="outline">
+                <Button onClick={() => { setShowBestSellers(false); setShowNewest(false); resetFilters(); setSearchQuery(''); }} variant="outline">
                   Réinitialiser les filtres
                 </Button>
               </div>
@@ -265,13 +300,18 @@ export default function Marketplace() {
                 {/* Results Info */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div className="text-sm text-muted-foreground">
-                    Affichage de {(pagination.current_page - 1) * pagination.per_page + 1} à {Math.min(pagination.current_page * pagination.per_page, pagination.total)} sur {pagination.total} produits
+                    {showNewest || showBestSellers 
+                      ? `${filteredProducts.length} produits`
+                      : `Affichage de ${(pagination.current_page - 1) * pagination.per_page + 1} à ${Math.min(pagination.current_page * pagination.per_page, pagination.total)} sur ${pagination.total} produits`
+                    }
                   </div>
-                  {selectedLocation && (
-                    <Badge variant="outline" className="bg-marketplace-blue/10 text-marketplace-blue border-marketplace-blue/20">
-                      📍 {selectedLocation}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {selectedLocation && (
+                      <Badge variant="outline" className="bg-marketplace-blue/10 text-marketplace-blue border-marketplace-blue/20">
+                        📍 {selectedLocation}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Products Grid */}
@@ -286,8 +326,8 @@ export default function Marketplace() {
                   ))}
                 </div>
 
-                {/* Pagination */}
-                {pagination.last_page > 1 && (
+                {/* Pagination - Masquée en mode meilleures ventes et nouveautés */}
+                {!showBestSellers && !showNewest && pagination.last_page > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-8">
                     <Button
                       variant="outline"

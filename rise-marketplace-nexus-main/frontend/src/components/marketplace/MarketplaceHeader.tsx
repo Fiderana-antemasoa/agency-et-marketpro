@@ -165,7 +165,10 @@ export const MarketplaceHeader = ({
               variant="ghost" 
               size="sm" 
               className="text-primary-foreground hover:bg-white/20 p-0"
-              onClick={() => setShowCategories(!showCategories)}
+              onClick={() => {
+                onCategoryFilter?.(undefined);
+                setShowCategories(!showCategories);
+              }}
             >
               Toutes les catégories {showCategories ? '▲' : '▼'}
             </Button>
@@ -192,14 +195,6 @@ export const MarketplaceHeader = ({
               onClick={() => onSpecialFilter?.('featured')}
             >
               Offres du jour
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-primary-foreground hover:bg-white/20 p-0"
-              onClick={() => onSpecialFilter?.('trending')}
-            >
-              Tendances
             </Button>
           </div>
           
