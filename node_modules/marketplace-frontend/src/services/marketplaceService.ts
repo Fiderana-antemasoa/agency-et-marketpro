@@ -5,7 +5,8 @@ import type {
   MarketplaceListResponse,
   CategoryOption,
   SearchSuggestion,
-  ProductReview 
+  ProductReview,
+  Country 
 } from '@/types/marketplace';
 
 // ========== DONNÉES MOCKÉES (À remplacer par vos vraies API) ==========
@@ -600,6 +601,7 @@ const mapOfferToProduct = (offer: any): MarketplaceProduct => {
   const updated_at = offer.updated_at || created_at;
   const inferredBrand = offer.brand || (offer.tags?.[0]) || deriveBrandFromTitle(title);
   const featuredImage = offer.avatar || offer.featured_image || offer.image || '';
+  const { city, country } = mapOfferLocation(offer);
   const images = Array.isArray(offer.images) && offer.images.length > 0
     ? offer.images
     : (featuredImage ? [{ id: 1, url: featuredImage, alt: title, is_primary: true }] : []);
@@ -625,8 +627,8 @@ const mapOfferToProduct = (offer: any): MarketplaceProduct => {
     status: (offer.status as any) || 'active',
     is_featured: !!offer.is_featured,
     is_trending: !!offer.is_trending,
-    country: (offer.country || 'FR') as any,
-    city: offer.city,
+    country: (country || offer.country || 'OTHER') as Country,
+    city: city || offer.city,
     condition: offer.condition_state,
     brand: inferredBrand,
     model: offer.model,
@@ -659,6 +661,60 @@ const mapOfferToProduct = (offer: any): MarketplaceProduct => {
       views_count: offer.stats?.views_count || 0,
     },
   } as MarketplaceProduct;
+};
+
+const COUNTRY_NAME_MAP: Record<string, Country> = {
+  france: 'FR',
+  paris: 'FR',
+  canada: 'CA',
+  montreal: 'CA',
+  belgique: 'BE',
+  belgium: 'BE',
+  bruxelles: 'BE',
+  brussels: 'BE',
+  etatsunis: 'US',
+  'etats-unis': 'US',
+  usa: 'US',
+  unitedstates: 'US',
+  royaumeuni: 'GB',
+  'royaume-uni': 'GB',
+  unitedkingdom: 'GB',
+  uk: 'GB',
+  allemagne: 'DE',
+  germany: 'DE',
+  espagne: 'ES',
+  spain: 'ES',
+  italie: 'IT',
+  italy: 'IT',
+  suisse: 'CH',
+  switzerland: 'CH',
+  maroc: 'MA',
+  tunisie: 'TN',
+  canadaenglish: 'CA',
+  canadafrench: 'CA',
+};
+
+const normalizeLocationKey = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+
+const mapOfferLocation = (offer: any): { city?: string; country?: Country } => {
+  const rawLocation = offer.localisation || offer.location || offer.city;
+  if (!rawLocation || typeof rawLocation !== 'string') {
+    return { city: offer.city, country: offer.country };
+  }
+
+  const trimmed = rawLocation.trim();
+  const key = normalizeLocationKey(trimmed);
+  const country = COUNTRY_NAME_MAP[key];
+
+  return {
+    city: trimmed,
+    country: country || (offer.country as Country | undefined),
+  };
 };
 
 /**

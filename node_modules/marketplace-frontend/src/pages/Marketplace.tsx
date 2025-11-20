@@ -8,6 +8,7 @@ import { MarketplaceHeader } from '@/components/marketplace/MarketplaceHeader';
 import { useMarketplace, useMarketplaceFilters } from '@/hooks/useMarketplace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Country, MarketplaceProduct } from '@/types/marketplace';
+import type { LocationOption } from '@/components/marketplace/LocationSelector';
 
 export default function Marketplace() {
   const { filters, updateFilters, resetFilters, activeFiltersCount } = useMarketplaceFilters();
@@ -17,6 +18,29 @@ export default function Marketplace() {
   const [showFilters, setShowFilters] = useState(false);
   const [showBestSellers, setShowBestSellers] = useState(false);
   const [showNewest, setShowNewest] = useState(false);
+
+  const locationOptions = useMemo<LocationOption[]>(() => {
+    const map = new Map<string, LocationOption>();
+    allProducts.forEach(product => {
+      const location = product.city?.trim();
+      if (!location) return;
+      const key = location.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.count = (existing.count || 1) + 1;
+        if (!existing.country && product.country) {
+          existing.country = product.country;
+        }
+      } else {
+        map.set(key, {
+          name: location,
+          country: product.country,
+          count: 1,
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => (b.count || 0) - (a.count || 0));
+  }, [allProducts]);
 
   // Filtrage dynamique complet (recherche + filtres)
   const filteredProducts = useMemo(() => {
@@ -154,11 +178,16 @@ export default function Marketplace() {
     if (category === undefined) {
       setShowBestSellers(false);
       setShowNewest(false);
+      setSearchQuery('');
+      setSelectedLocation(undefined);
       updateFilters({
         category: undefined,
+        search: undefined,
         sort_by: undefined,
         is_featured: undefined,
         is_trending: undefined,
+        city: undefined,
+        country: undefined,
       } as any);
       return;
     }
@@ -201,6 +230,7 @@ export default function Marketplace() {
         onSearchChange={setSearchQuery}
         onSearch={handleSearch}
         selectedLocation={selectedLocation}
+        locationOptions={locationOptions}
         onLocationChange={handleLocationChange}
         onCategoryFilter={handleCategoryFilter}
         onSpecialFilter={handleSpecialFilter}

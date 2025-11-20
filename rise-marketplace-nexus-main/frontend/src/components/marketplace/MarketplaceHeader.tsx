@@ -3,7 +3,7 @@ import { Search, ShoppingCart, User, Heart, Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { LocationSelector } from './LocationSelector';
+import { LocationSelector, type LocationOption } from './LocationSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCategories } from '@/hooks/useMarketplace';
 import type { Country, ProductCategory } from '@/types/marketplace';
@@ -13,6 +13,7 @@ interface MarketplaceHeaderProps {
   onSearchChange: (query: string) => void;
   onSearch: () => void;
   selectedLocation?: string;
+  locationOptions?: LocationOption[];
   onLocationChange: (location: string | undefined, country?: Country) => void;
   onCategoryFilter?: (category: ProductCategory | undefined) => void;
   onSpecialFilter?: (filter: string) => void;
@@ -23,6 +24,7 @@ export const MarketplaceHeader = ({
   onSearchChange,
   onSearch,
   selectedLocation,
+  locationOptions,
   onLocationChange,
   onCategoryFilter,
   onSpecialFilter
@@ -49,6 +51,7 @@ export const MarketplaceHeader = ({
           <div className="flex items-center gap-4">
             <LocationSelector
               selectedLocation={selectedLocation}
+              locations={locationOptions}
               onLocationChange={onLocationChange}
             />
           </div>

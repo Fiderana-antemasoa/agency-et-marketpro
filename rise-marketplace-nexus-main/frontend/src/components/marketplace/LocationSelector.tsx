@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MapPin, Search, Locate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,12 +6,20 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import type { Country } from '@/types/marketplace';
 
+export type LocationOption = {
+  name: string;
+  country?: Country;
+  flag?: string;
+  count?: number;
+};
+
 interface LocationSelectorProps {
   selectedLocation?: string;
+  locations?: LocationOption[];
   onLocationChange: (location: string | undefined, country?: Country) => void;
 }
 
-const POPULAR_CITIES = [
+const POPULAR_CITIES: LocationOption[] = [
   { name: 'Paris', country: 'FR', flag: '🇫🇷' },
   { name: 'London', country: 'GB', flag: '🇬🇧' },
   { name: 'New York', country: 'US', flag: '🇺🇸' },
@@ -22,25 +30,45 @@ const POPULAR_CITIES = [
   { name: 'Dubai', country: 'AE', flag: '🇦🇪' },
 ];
 
-export const LocationSelector = ({ selectedLocation, onLocationChange }: LocationSelectorProps) => {
+const getFlagFromCountry = (country?: Country) => {
+  if (!country) return '🌍';
+  if (country === 'OTHER') return '🌍';
+  return country
+    .toUpperCase()
+    .replace(/./g, char =>
+      String.fromCodePoint(127397 + char.charCodeAt(0))
+    );
+};
+
+export const LocationSelector = ({ selectedLocation, locations, onLocationChange }: LocationSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCities = POPULAR_CITIES.filter(city =>
-    city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    city.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const availableLocations = useMemo(() => {
+    if (locations && locations.length > 0) {
+      return locations;
+    }
+    return POPULAR_CITIES;
+  }, [locations]);
 
-  const handleLocationSelect = (city: typeof POPULAR_CITIES[0]) => {
-    onLocationChange(city.name, city.country as Country);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredLocations = availableLocations.filter(option => {
+    if (!normalizedQuery) return true;
+    return (
+      option.name.toLowerCase().includes(normalizedQuery) ||
+      (option.country?.toLowerCase().includes(normalizedQuery) ?? false)
+    );
+  });
+
+  const handleLocationSelect = (option: LocationOption) => {
+    onLocationChange(option.name, option.country);
     setOpen(false);
   };
 
   const handleCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // En production, vous utiliseriez une API de géocodage inverse
+        () => {
           onLocationChange('Ma position', 'FR');
           setOpen(false);
         },
@@ -69,7 +97,7 @@ export const LocationSelector = ({ selectedLocation, onLocationChange }: Locatio
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher une ville..."
+              placeholder="Rechercher une localisation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1"
@@ -86,22 +114,43 @@ export const LocationSelector = ({ selectedLocation, onLocationChange }: Locatio
           </Button>
 
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Villes populaires</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {filteredCities.map((city) => (
-                <Button
-                  key={`${city.name}-${city.country}`}
-                  variant="ghost"
-                  onClick={() => handleLocationSelect(city)}
-                  className="justify-start gap-2 h-auto p-2 hover:bg-marketplace-gray/50"
-                >
-                  <span className="text-lg">{city.flag}</span>
-                  <div className="flex flex-col items-start text-left">
-                    <span className="text-sm font-medium">{city.name}</span>
-                    <span className="text-xs text-muted-foreground">{city.country}</span>
-                  </div>
-                </Button>
-              ))}
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-muted-foreground">Localisations disponibles</h4>
+              {locations && locations.length > 0 && (
+                <Badge variant="outline">{locations.length}</Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+              {filteredLocations.length === 0 ? (
+                <p className="col-span-2 text-xs text-muted-foreground text-center py-4">
+                  Aucune localisation
+                </p>
+              ) : (
+                filteredLocations.map((option) => (
+                  <Button
+                    key={`${option.name}-${option.country ?? 'NA'}`}
+                    variant="ghost"
+                    onClick={() => handleLocationSelect(option)}
+                    className="justify-start gap-2 h-auto p-2 hover:bg-marketplace-gray/50"
+                  >
+                    <span className="text-lg">
+                      {option.flag || getFlagFromCountry(option.country)}
+                    </span>
+                    <div className="flex flex-col items-start text-left">
+                      <span className="text-sm font-medium">{option.name}</span>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {option.country && <span>{option.country}</span>}
+                        {option.count && (
+                          <>
+                            <span>•</span>
+                            <span>{option.count} offre{option.count > 1 ? 's' : ''}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Button>
+                ))
+              )}
             </div>
           </div>
 

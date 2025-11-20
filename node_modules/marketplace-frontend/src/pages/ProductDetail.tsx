@@ -10,6 +10,31 @@ import { ProductCard } from '@/components/marketplace/ProductCard';
 import { fetchProductDetails, fetchMarketplaceProducts } from '@/services/marketplaceService';
 import type { MarketplaceProduct } from '@/types/marketplace';
 
+const COUNTRY_LABELS: Record<string, string> = {
+  FR: 'France',
+  US: 'États-Unis',
+  GB: 'Royaume-Uni',
+  CA: 'Canada',
+  BE: 'Belgique',
+  DE: 'Allemagne',
+  ES: 'Espagne',
+  IT: 'Italie',
+  AE: 'Émirats arabes unis',
+  OTHER: 'Non spécifié',
+};
+
+const getCountryLabel = (code?: string) => (code ? COUNTRY_LABELS[code] || code : undefined);
+
+const getLocationLabel = (city?: string | null, country?: string) => {
+  const parts: string[] = [];
+  if (city) parts.push(city);
+  const countryLabel = getCountryLabel(country);
+  if (countryLabel && countryLabel !== 'Non spécifié') {
+    parts.push(countryLabel);
+  }
+  return parts.join(', ');
+};
+
 export default function ProductDetail() {
   const { id } = useParams();
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
@@ -76,6 +101,8 @@ export default function ProductDetail() {
       </div>
     );
   }
+
+  const locationLabel = getLocationLabel(product.city, product.country);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -281,7 +308,7 @@ export default function ProductDetail() {
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{product.city || 'Non spécifié'}, {product.country}</span>
+                      <span>{locationLabel || 'Non spécifié'}</span>
                     </div>
                   </div>
                   
@@ -303,6 +330,12 @@ export default function ProductDetail() {
                 <span className="text-muted-foreground">Catégorie</span>
                 <span className="capitalize">{product.category}</span>
               </div>
+              {locationLabel && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Localisation</span>
+                  <span className="text-right">{locationLabel}</span>
+                </div>
+              )}
               {product.brand && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Marque</span>
