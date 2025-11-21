@@ -13,6 +13,7 @@ import type { LocationOption } from '@/components/marketplace/LocationSelector';
 export default function Marketplace() {
   const { filters, updateFilters, resetFilters, activeFiltersCount } = useMarketplaceFilters();
   const { products: allProducts, loading, pagination, changePage, refetch } = useMarketplace({});
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>();
   const [showFilters, setShowFilters] = useState(false);
@@ -20,11 +21,14 @@ export default function Marketplace() {
   const [showNewest, setShowNewest] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      refetch();
-    }, 30000);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'marketplace_products_version') {
+        refetch();
+      }
+    };
 
-    return () => clearInterval(interval);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [refetch]);
 
   const locationOptions = useMemo<LocationOption[]>(() => {

@@ -76,6 +76,10 @@ export const useMarketplace = (initialFilters: MarketplaceFilters = {}) => {
     loadProducts();
   }, []);
 
+  const refetch = useCallback(() => {
+    loadProducts();
+  }, [loadProducts]);
+
   // Reset des filtres
   const resetFilters = useCallback(() => {
     const emptyFilters: MarketplaceFilters = { page: 1, per_page: 12 };
@@ -92,7 +96,7 @@ export const useMarketplace = (initialFilters: MarketplaceFilters = {}) => {
     updateFilters,
     changePage,
     resetFilters,
-    refetch: () => loadProducts()
+    refetch
   };
 };
 
