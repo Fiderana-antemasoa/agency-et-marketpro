@@ -12,12 +12,20 @@ import type { LocationOption } from '@/components/marketplace/LocationSelector';
 
 export default function Marketplace() {
   const { filters, updateFilters, resetFilters, activeFiltersCount } = useMarketplaceFilters();
-  const { products: allProducts, loading, pagination, changePage } = useMarketplace({});
+  const { products: allProducts, loading, pagination, changePage, refetch } = useMarketplace({});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>();
   const [showFilters, setShowFilters] = useState(false);
   const [showBestSellers, setShowBestSellers] = useState(false);
   const [showNewest, setShowNewest] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const locationOptions = useMemo<LocationOption[]>(() => {
     const map = new Map<string, LocationOption>();

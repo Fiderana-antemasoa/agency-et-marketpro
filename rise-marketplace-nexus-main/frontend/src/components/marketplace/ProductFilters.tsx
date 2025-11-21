@@ -232,11 +232,19 @@ export const ProductFilters = ({
                 <label className="text-sm font-medium text-muted-foreground">Prix minimum</label>
                 <Input
                   type="number"
-                  placeholder="0€"
-                  value={filters.price_min || ''}
+                  step="0.01"
+                  min={0}
+                  inputMode="decimal"
+                  value={filters.price_min ?? ''}
                   onChange={(e) => {
-                    const value = e.target.value ? parseInt(e.target.value) : undefined;
-                    onFiltersChange({ price_min: value });
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      onFiltersChange({ price_min: undefined });
+                      return;
+                    }
+                    const numeric = parseFloat(raw);
+                    const clamped = Math.max(0, numeric);
+                    onFiltersChange({ price_min: isNaN(clamped) ? undefined : clamped });
                   }}
                   className="h-9"
                 />
@@ -245,17 +253,25 @@ export const ProductFilters = ({
                 <label className="text-sm font-medium text-muted-foreground">Prix maximum</label>
                 <Input
                   type="number"
-                  placeholder="∞"
-                  value={filters.price_max || ''}
+                  step="0.01"
+                  min={0}
+                  inputMode="decimal"
+                  value={filters.price_max ?? ''}
                   onChange={(e) => {
-                    const value = e.target.value ? parseInt(e.target.value) : undefined;
-                    onFiltersChange({ price_max: value });
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      onFiltersChange({ price_max: undefined });
+                      return;
+                    }
+                    const numeric = parseFloat(raw);
+                    const clamped = Math.max(0, numeric);
+                    onFiltersChange({ price_max: isNaN(clamped) ? undefined : clamped });
                   }}
                   className="h-9"
                 />
               </div>
             </div>
-            
+
             {/* Raccourcis de prix populaires */}
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">Raccourcis populaires</label>
@@ -284,7 +300,7 @@ export const ProductFilters = ({
                 ))}
               </div>
             </div>
-            
+
             {/* Badges des filtres actifs */}
             {(filters.price_min !== undefined || filters.price_max !== undefined) && (
               <div className="flex gap-2 flex-wrap">
